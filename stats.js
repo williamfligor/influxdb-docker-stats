@@ -158,25 +158,47 @@ Monitor.prototype._collect = function(stat) {
         }
     }
 
-    var network = stat.network;
+    var networks = stat.networks;
     var cpu = stat.cpu_stats;
     var memory = stat.memory_stats;
 
     self._prev = stat;
 
-    stats.collect(SERIES_NAME, {
+    var networkrx_bytes = 0;
+    var networkrx_packets = 0;
+    var networkrx_errors = 0;
+    var networkrx_dropped = 0;
+    var networktx_bytes = 0;
+    var networktx_packets = 0;
+    var networktx_errors = 0;
+    var networktx_dropped = 0;
+
+    for (var k in networks) {
+        var network = networks[k];
+
+        networkrx_bytes += network.rx_bytes;
+        networkrx_packets += network.rx_packets;
+        networkrx_errors += network.rx_errors;
+        networkrx_dropped += network.rx_dropped;
+        networktx_bytes += network.tx_bytes;
+        networktx_packets += network.tx_packets;
+        networktx_errors += network.tx_errors;
+        networktx_dropped += network.tx_dropped;
+    }
+
+    var data = {
         name: self._name,
         id: self._id,
 
         // network
-        'network.rx_bytes': network.rx_bytes,
-        'network.rx_packets': network.rx_packets,
-        'network.rx_errors': network.rx_errors,
-        'network.rx_dropped': network.rx_dropped,
-        'network.tx_bytes': network.tx_bytes,
-        'network.tx_packets': network.tx_packets,
-        'network.tx_errors': network.tx_errors,
-        'network.tx_dropped': network.tx_dropped,
+        'network.rx_bytes': networkrx_bytes,
+        'network.rx_packets': networkrx_packets,
+        'network.rx_errors': networkrx_errors,
+        'network.rx_dropped': networkrx_dropped,
+        'network.tx_bytes': networktx_bytes,
+        'network.tx_packets': networktx_packets,
+        'network.tx_errors': networktx_errors,
+        'network.tx_dropped': networktx_dropped,
 
         // cpu
         'cpu.usage': cpu_percent,
@@ -186,5 +208,9 @@ Monitor.prototype._collect = function(stat) {
         'memory.max_usage': memory.max_usage,
         'memory.limit': memory.limit,
         'memory.failcnt': memory.failcnt,
-    });
+    };
+
+    console.log('Sending Data', data);
+
+    stats.collect(SERIES_NAME, data);
 };
