@@ -7,12 +7,13 @@ var difference = require('lodash.difference');
 
 var INFLUXDB_URL = process.env.INFLUXDB_URL;
 var SERIES_NAME = process.env.INFLUXDB_SERIES_NAME || 'container-stats';
+var TIMER = process.env.TIMER || 2000;
 
 // if set, determine which label to use for the container name
 // otherwise first item in Names will be used
 var CONTAINER_NAME_LABEL = process.env.CONTAINER_NAME_LABEL;
 
-var stats = Stats(INFLUXDB_URL);
+var stats = Stats(SERIES_NAME, INFLUXDB_URL);
 
 stats.on('error', function(err) {
     console.error(err.stack);
@@ -87,6 +88,7 @@ function Monitor(container_id, container_info) {
         self._name = container_info.Names[0];
     }
     self._name = self._name || 'unknown';
+    self._name = self._name.replace('/', '');
 
     self.start();
 }
@@ -114,7 +116,7 @@ Monitor.prototype.start = function() {
 
             //debug('new stats %s %j', self._container.id, stat);
             self._collect(stat);
-            setTimeout(get_new_stats, 2000);
+            setTimeout(get_new_stats, TIMER);
         });
     })();
 };
@@ -187,9 +189,6 @@ Monitor.prototype._collect = function(stat) {
     }
 
     var data = {
-        name: self._name,
-        id: self._id,
-
         // network
         'network.rx_bytes': networkrx_bytes,
         'network.rx_packets': networkrx_packets,
@@ -210,7 +209,10 @@ Monitor.prototype._collect = function(stat) {
         'memory.failcnt': memory.failcnt,
     };
 
-    console.log('Sending Data', data);
+    console.log('Sending Data', self._name, self._id);
 
-    stats.collect(SERIES_NAME, data);
+    stats.collect(data, {
+        container_name: self._name,
+        container_id: self._id,
+    });
 };
